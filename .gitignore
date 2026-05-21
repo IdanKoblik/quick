@@ -3,6 +3,7 @@
 #
 # Local
 bin/*
+quick.log
 
 # Binaries for programs and plugins
 *.exe
