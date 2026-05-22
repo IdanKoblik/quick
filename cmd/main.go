@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
+	"crypto/rand"
+	"math/big"
 
 	"quick/internal/logging"
 	"quick/internal/networking"
@@ -27,7 +29,18 @@ const (
 var BUILD_TIME string
 var VERSION string
 
+func GenerateRandomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		ret[i] = letters[num.Int64()]
+	}
+	return string(ret)
+}
+
 func main() {
+	fmt.Println(GenerateRandomString(8))
 	closer, err := logging.SetupLogger()
 	if err != nil {
 		panic(err)
