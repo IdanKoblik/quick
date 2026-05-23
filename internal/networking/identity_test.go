@@ -5,55 +5,43 @@ import (
 	"strings"
 	"testing"
 
+	"quick/pkg/types"
+
 	"github.com/go-playground/assert/v2"
 )
 
 func TestGenerateIdentity(t *testing.T) {
-	t.Run("populates IP, port, fingerprint and code", func(t *testing.T) {
-		ip := "192.168.1.42"
-
-		identity, err := GenerateIdentity(ip)
+	t.Run("p2p populates addr, fingerprint and code", func(t *testing.T) {
+		identity, err := GenerateIdentity("192.168.1.42:6589", types.P2P)
 		assert.Equal(t, nil, err)
 		assert.NotEqual(t, nil, identity)
-		assert.Equal(t, ip, identity.IP)
-		assert.Equal(t, port, identity.Port)
+		assert.NotEqual(t, nil, identity.Addr)
+		assert.Equal(t, "192.168.1.42", identity.Addr.IP.String())
+		assert.Equal(t, 6589, identity.Addr.Port)
 		assert.NotEqual(t, "", identity.Fingerprint)
 		assert.NotEqual(t, "", identity.Code)
 	})
 
-	t.Run("accepts empty IP string", func(t *testing.T) {
-		identity, err := GenerateIdentity("")
+	t.Run("direct has no pairing code", func(t *testing.T) {
+		identity, err := GenerateIdentity("192.168.1.42:6589", types.DIRECT)
 		assert.Equal(t, nil, err)
-		assert.Equal(t, "", identity.IP)
-		assert.Equal(t, port, identity.Port)
+		assert.Equal(t, "", identity.Code)
+		assert.NotEqual(t, "", identity.Fingerprint)
+	})
+
+	t.Run("rejects address without a port", func(t *testing.T) {
+		_, err := GenerateIdentity("192.168.1.42", types.DIRECT)
+		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("subsequent calls produce distinct fingerprints and codes", func(t *testing.T) {
-		first, err := GenerateIdentity("10.0.0.1")
+		first, err := GenerateIdentity("10.0.0.1:6589", types.P2P)
 		assert.Equal(t, nil, err)
-		second, err := GenerateIdentity("10.0.0.1")
+		second, err := GenerateIdentity("10.0.0.1:6589", types.P2P)
 		assert.Equal(t, nil, err)
 
 		assert.NotEqual(t, first.Fingerprint, second.Fingerprint)
 		assert.NotEqual(t, first.Code, second.Code)
-	})
-}
-
-func TestGenerateFingerprint(t *testing.T) {
-	t.Run("returns non-empty hex string", func(t *testing.T) {
-		fp, err := GenerateFingerprint()
-		assert.Equal(t, nil, err)
-		assert.NotEqual(t, "", fp)
-		// SHA256 hex digest is 64 characters
-		assert.Equal(t, 64, len(fp))
-	})
-
-	t.Run("successive fingerprints differ", func(t *testing.T) {
-		fp1, err := GenerateFingerprint()
-		assert.Equal(t, nil, err)
-		fp2, err := GenerateFingerprint()
-		assert.Equal(t, nil, err)
-		assert.NotEqual(t, fp1, fp2)
 	})
 }
 

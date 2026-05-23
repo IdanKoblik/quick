@@ -1,8 +1,13 @@
 package types
 
+import (
+	"crypto/tls"
+	"net"
+)
+
 type Identity struct {
-	IP 	 		string
-	Port 		uint16
+	Addr 		*net.UDPAddr
 	Fingerprint string
 	Code 		string
+	Cert 		*tls.Certificate
 }

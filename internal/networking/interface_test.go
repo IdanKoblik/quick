@@ -29,8 +29,6 @@ func TestGetInterfaces(t *testing.T) {
 
 		result := GetInterfaces(&ifaces)
 
-		// Every interface that reported at least one address must be present
-		// in the map with the same address strings, in order.
 		for _, iface := range ifaces {
 			addrs, _ := iface.Addrs()
 			if len(addrs) == 0 {
@@ -41,7 +39,9 @@ func TestGetInterfaces(t *testing.T) {
 			assert.Equal(t, true, ok)
 			assert.Equal(t, len(addrs), len(got))
 			for i, addr := range addrs {
-				assert.Equal(t, addr.String(), got[i])
+				ipNet, ok := addr.(*net.IPNet)
+				assert.Equal(t, true, ok)
+				assert.Equal(t, ipNet.IP.String(), got[i])
 			}
 		}
 	})

@@ -2,9 +2,12 @@ package networking
 
 import (
 	"fmt"
+	"net"
 	"time"
 	"crypto/rand"
 	math_rand "math/rand"
+	"crypto/tls"
+	"encoding/pem"
 	"crypto/rsa"
 	"crypto/x509"
 	"math/big"
@@ -14,7 +17,7 @@ import (
 )
 
 const (
-	port = uint16(6589)
+	Port = uint16(6589)
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
@@ -23,33 +26,75 @@ var dictionary = []string{
 	"ghost", "harvest", "island", "jungle", "enter",
 }
 
-func GenerateIdentity(ip string) (*types.Identity, error) {
-	var identity types.Identity
-	identity.IP = ip
-	identity.Port = port
-
-	fp, err := GenerateFingerprint()
+func GenerateIdentity(ip string, mode types.ConnMode) (*types.Identity, error) {
+	addr, err := net.ResolveUDPAddr("udp", ip)
 	if err != nil {
 		return nil, err
 	}
 
-	code := GenerateCode()
-	identity.Code = code
-	identity.Fingerprint = fp
+	var identity types.Identity
+	identity.Addr = addr
+
+	cert, err := GenerateCertificate()
+	if err != nil {
+		return nil, err
+	}
+
+	publicBytes, _ := x509.MarshalPKIXPublicKey(cert.Leaf.PublicKey)
+
+	// The pairing code is only meaningful for P2P; direct connections are
+	// established by address.
+	if mode == types.P2P {
+		identity.Code = GenerateCode()
+	}
+	identity.Fingerprint = utils.Hash(string(publicBytes))
+	identity.Cert = cert
 
 	return &identity, nil
 }
 
-func GenerateFingerprint() (string, error) {
+func GenerateCertificate() (*tls.Certificate, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048) // 2048 bits (standard)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	publicKey := &privateKey.PublicKey
-	publicBytes, _ := x509.MarshalPKIXPublicKey(publicKey)
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(24 * time.Hour),
 
-	return utils.Hash(string(publicBytes)), nil
+		KeyUsage: x509.KeyUsageKeyEncipherment |
+			x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+		},
+	}
+
+	certDER, _ := x509.CreateCertificate(
+		rand.Reader,
+		&template,
+		&template,
+		&privateKey.PublicKey,
+		privateKey,
+	)
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certDER,
+	})
+
+	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tlsCert, nil
 }
 
 func GenerateCode() string {
