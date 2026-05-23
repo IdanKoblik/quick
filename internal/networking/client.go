@@ -12,9 +12,6 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-// Connect dials a peer over QUIC using our own identity for the client
-// certificate, opens a stream, and keeps the connection alive until ctx is
-// cancelled.
 func Connect(ctx context.Context, identity *types.Identity, peer string) error {
 	addr, err := net.ResolveUDPAddr("udp4", peer)
 	if err != nil {
