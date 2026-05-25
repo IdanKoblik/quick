@@ -8,6 +8,7 @@
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
+- [ ] Tui update
 
 ## Testing
 
